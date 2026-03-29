@@ -23,6 +23,13 @@ jobs:
       with:
         python-version: '3.12'
 
+    # Native GH Action conditional: Only runs on Linux
+    - name: Install Linux System Libraries
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3-tk libwebp-dev
+
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
@@ -30,6 +37,11 @@ jobs:
 
     - name: Build Binary
       run: python build.py
+
+    # Native GH Action conditional: Fix permissions for Unix-like systems
+    - name: Set Executable Permissions (Linux/Mac)
+      if: runner.os != 'Windows'
+      run: chmod +x dist/ComicShrinker* || true
 
     # This step creates a real GitHub Release and attaches the files
     - name: Create Release
