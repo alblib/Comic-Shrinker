@@ -1,15 +1,18 @@
-name: Build Comic-Shrinker EXE
+name: Production Release Build
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-  workflow_dispatch: # Allows manual triggering
+    tags:
+      - 'v*' # Trigger on v1.0, v2.1.4, etc.
+  workflow_dispatch: # Allows you to test the build manually anytime
 
 jobs:
   build:
-    runs-on: windows-latest # Required for building a Windows .exe
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
 
     steps:
     - name: Checkout Code
@@ -18,20 +21,25 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.12' # Matches your Pillow 12 target
+        python-version: '3.12'
 
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Build with PyInstaller
-      run: |
-        python build.py
+    - name: Build Binary
+      run: python build.py
 
-    - name: Upload Executable
-      uses: actions/upload-artifact@v4
+    # This step creates a real GitHub Release and attaches the files
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/')
       with:
-        name: Comic-Shrinker-Windows
-        path: dist/*.exe
-        retention-days: 5
+        files: |
+          dist/ComicShrinker*
+          dist/*.exe
+          dist/*.app
+        body: "Automated build for version ${{ github.ref_name }} (Pillow 12 Stable)"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
