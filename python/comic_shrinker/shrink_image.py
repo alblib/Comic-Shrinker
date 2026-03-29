@@ -1,59 +1,46 @@
-from PIL import Image
+from PIL import Image, ImageFilter
 import numpy as np
 
 
-def is_monochrome(
-        im: Image.Image,
-        sat_threshold: int = 20,
-        hue_std_threshold: float = 5.0,
-        min_color_pixels_ratio: float = 0.02
-) -> bool:
+def is_monochrome(im: Image.Image, blur_radius: int = 5, sample_size: int = 2048) -> bool:
     """
-    Advanced monochrome detection that handles color shifts (Sepia, Blue-tint, etc.)
-    by analyzing Hue variance.
-
-    Args:
-        im: PIL Image (converted to RGB internally).
-        sat_threshold: Minimum saturation [0-255] to consider a pixel "colored".
-        hue_std_threshold: Max standard deviation of Hue allowed for monochrome.
-                           Lower is stricter (purely one tint).
-        min_color_pixels_ratio: If fewer than 2% of pixels are colored, it's
-                                effectively B&W regardless of hue.
+    High-speed monochrome detection using downscaling and Gaussian blur
+    to eliminate sensor noise interference.
     """
-    # 1. Convert to HSV
-    hsv = im.convert('HSV')
-    h, s, v = hsv.split()
 
-    s_arr = np.array(s)
-    h_arr = np.array(h)
+    # 1. Downscale and Blur for noise suppression
+    w, h = im.size
+    ratio = sample_size / max(w, h)
+    thumb = im.resize((int(w * ratio), int(h * ratio)), Image.Resampling.BOX)
+    thumb = thumb.filter(ImageFilter.GaussianBlur(radius=blur_radius))
 
-    # 2. Mask: Only look at pixels that are actually saturated (not gray/white/black)
-    # We ignore very desaturated pixels which would randomise the Hue calculation.
-    color_mask = s_arr > sat_threshold
+    # 2. Convert to HSV and extract channels
+    hsv_im = thumb.convert('HSV')
+    h_arr, s_arr, v_arr = np.array(hsv_im, dtype=np.float32).transpose(2, 0, 1)
 
-    # Total colorful pixels
-    num_color_pixels = np.count_nonzero(color_mask)
-    total_pixels = s_arr.size
-    color_ratio = num_color_pixels / total_pixels
+    # 3. Mask dark pixels (Value < 30) to avoid Hue jitter in blacks
+    mask = v_arr.flatten() > 30
+    h_flat = h_arr.flatten()[mask]
+    s_flat = s_arr.flatten()[mask]
+    v_flat = v_arr.flatten()[mask]
 
-    # If there's almost no color at all, it's definitely monochrome
-    if color_ratio < min_color_pixels_ratio:
-        return True
+    # 4. Convert to Radial Coordinates
+    # Hue (0-255) maps to 0 to 2*pi
+    theta = (h_flat / 255.0) * 2 * np.pi
+    # Perceptual Saturation (S*V weight as used in your previous logic)
+    r = (s_flat * v_flat) / (255.0 ** 2)
 
-    # 3. Analyze Hue Variance of the colored pixels
-    relevant_hues = h_arr[color_mask]
+    x = r * np.cos(theta)
+    y = r * np.sin(theta)
 
-    # Circular Standard Deviation: Since Hue 0 and 255 are both "Red",
-    # we use a simplified check or shift the range if it wraps around.
-    # For comics/scans, a simple Std Dev usually suffices unless the tint is exactly 0.
-    hue_std = np.std(relevant_hues)
+    mean_x = np.mean(x)
+    mean_y = np.mean(y)
 
-    # 4. Final Decision
-    # If the variance in Hue is very low, the whole page is tinted one color.
-    if hue_std < hue_std_threshold:
-        return True  # It's Sepia, Blue-tinted, or Green-tinted monochrome
+    dx = x - mean_x
+    dy = y - mean_y
 
-    return False  # It's a multi-color image
+    stdev = np.sqrt(np.mean(dx * dx + dy * dy))
+    return stdev < 0.02
 
 
 def shrink_image(
