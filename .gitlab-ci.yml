@@ -1,0 +1,43 @@
+stages:
+  - build
+
+# Common template for all builds
+.build_template:
+  stage: build
+  script:
+    - python -m pip install --upgrade pip
+    - pip install -r requirements.txt
+    - python build.py
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
+
+# --- Windows Build ---
+build_windows:
+  extends: .build_template
+  tags:
+    - shared-windows
+    - windows
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# --- Linux Build ---
+build_linux:
+  extends: .build_template
+  image: python:3.12
+  tags:
+    - docker
+    - linux
+  before_script:
+    - apt-get update && apt-get install -y python3-tk libwebp-dev
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# --- macOS Build ---
+build_macos:
+  extends: .build_template
+  tags:
+    - saas-macos-medium-m1 # Standard GitLab SaaS Mac runner
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
