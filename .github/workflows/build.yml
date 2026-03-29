@@ -43,6 +43,18 @@ jobs:
       if: runner.os != 'Windows'
       run: chmod +x dist/ComicShrinker* || true
 
+    - name: Rename Executables
+      shell: bash # Windows에서도 bash 문법(mv)을 쓰기 위해 설정 (Git Bash 활용)
+      run: |
+        VERSION=${{ github.ref_name }}
+        if [ "$RUNNER_OS" == "Windows" ]; then
+          mv dist/ComicShrinker.exe dist/ComicShrinker_${VERSION}_win64.exe
+        elif [ "$RUNNER_OS" == "macOS" ]; then
+          mv dist/ComicShrinker dist/ComicShrinker_${VERSION}_macos.app
+        else
+          mv dist/ComicShrinker dist/ComicShrinker_${VERSION}_linux.run
+        fi
+
     # This step creates a real GitHub Release and attaches the files
     - name: Create Release
       uses: softprops/action-gh-release@v2
@@ -50,8 +62,6 @@ jobs:
       with:
         files: |
           dist/ComicShrinker*
-          dist/*.exe
-          dist/*.app
         body: "Automated build for version ${{ github.ref_name }} (Pillow 12 Stable)"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
