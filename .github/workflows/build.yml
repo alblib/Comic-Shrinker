@@ -1,0 +1,37 @@
+name: Build Comic-Shrinker EXE
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  build:
+    runs-on: windows-latest # Required for building a Windows .exe
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12' # Matches your Pillow 12 target
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Build with PyInstaller
+      run: |
+        python build.py
+
+    - name: Upload Executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: Comic-Shrinker-Windows
+        path: dist/*.exe
+        retention-days: 5

@@ -4,7 +4,7 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 from multiprocessing import freeze_support
 
 # Assuming your package structure:
