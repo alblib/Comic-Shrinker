@@ -24,6 +24,7 @@ jobs:
         python-version: '3.12'
 
     - name: Install Tk dependencies
+      shell: bash
       run: |
         if [ "$RUNNER_OS" = "Linux" ]; then
           sudo apt-get update
