@@ -23,12 +23,32 @@ jobs:
       with:
         python-version: '3.12'
 
-    # Native GH Action conditional: Only runs on Linux
-    - name: Install Linux System Libraries
-      if: runner.os == 'Linux'
+    - name: Install Tk dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y python3-tk libwebp-dev
+        if [ "$RUNNER_OS" = "Linux" ]; then
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3-tk \
+            tk-dev \
+            libwebp-dev
+
+        elif [ "$RUNNER_OS" = "macOS" ]; then
+          # Ensure stable Python (avoid broken system/Homebrew edge cases)
+          brew install python@3.12
+          brew install tcl-tk || true
+
+          # Force correct Python
+          export PATH="/opt/homebrew/bin:$PATH"
+          python3.12 -m pip install --upgrade pip
+
+          # Optional: ensure Tk paths are visible (rarely needed, but safe)
+          export LDFLAGS="-L$(brew --prefix tcl-tk)/lib"
+          export CPPFLAGS="-I$(brew --prefix tcl-tk)/include"
+          export PKG_CONFIG_PATH="$(brew --prefix tcl-tk)/lib/pkgconfig"
+        fi
+
+        # Global Tk sanity check (applies to both OS)
+        python -c "import tkinter; tkinter.Tk().destroy()"
 
     - name: Install Dependencies
       run: |
