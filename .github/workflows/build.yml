@@ -35,12 +35,11 @@ jobs:
 
         elif [ "$RUNNER_OS" = "macOS" ]; then
           # Ensure stable Python (avoid broken system/Homebrew edge cases)
-          brew install python@3.12
           brew install tcl-tk || true
 
           # Force correct Python
           export PATH="/opt/homebrew/bin:$PATH"
-          python3.12 -m pip install --upgrade pip
+          python -m pip install --upgrade pip
 
           # Optional: ensure Tk paths are visible (rarely needed, but safe)
           export LDFLAGS="-L$(brew --prefix tcl-tk)/lib"
