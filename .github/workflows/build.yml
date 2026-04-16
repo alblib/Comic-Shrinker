@@ -49,7 +49,7 @@ jobs:
         fi
 
         # Global Tk sanity check (applies to both OS)
-        python -c "import tkinter; tkinter.Tk().destroy()"
+        python -c "import tkinter as tk; root=tk.Tk(); root.withdraw(); root.destroy()"
 
     - name: Install Dependencies
       run: |
